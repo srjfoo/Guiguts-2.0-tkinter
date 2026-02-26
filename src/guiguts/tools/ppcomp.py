@@ -65,13 +65,15 @@ logger = logging.getLogger(__package__)
 
 ###############################################################
 
-FLAG_CH_HTML_L = "⦓"
-FLAG_CH_HTML_R = "⦔"
-FLAG_CH_TEXT_L = "⦕"
-FLAG_CH_TEXT_R = "⦖"
+FLAG_CH_1_L = "⦓"
+FLAG_CH_1_R = "⦔"
+FLAG_CH_2_L = "⦕"
+FLAG_CH_2_R = "⦖"
 NO_SPACE_BEFORE = "])}.,:;!?"
 NO_SPACE_AFTER = "[({"
-PAIR_RE = re.compile(r"⦕(.*?)⦖\s+⦓(.*?)⦔")
+PAIR_RE = re.compile(
+    rf"{FLAG_CH_1_L}(.*?){FLAG_CH_1_R}\s+{FLAG_CH_2_L}(.*?){FLAG_CH_2_R}"
+)
 
 
 class HTMLSyntaxError(SyntaxError):
@@ -106,22 +108,22 @@ class PPcompCheckerDialog(CheckerDialog):
         fn_frame.grid(row=0, column=0, sticky="NSEW")
         fn_frame.columnconfigure(0, weight=1)
         self.html_combo = PathnameCombobox(
-            fn_frame, PrefKey.PPCOMP_HTML_FILE_HISTORY, PrefKey.PPCOMP_HTML_FILE
+            fn_frame, PrefKey.PPCOMP_FILE_HISTORY, PrefKey.PPCOMP_FILE_1
         )
         self.html_combo.grid(row=0, column=0, sticky="EW")
         ttk.Button(
             fn_frame,
-            text="Choose HTML File",
-            command=lambda: self.choose_file(html=True),
+            text="Choose File 1",
+            command=lambda: self.choose_file(1),
         ).grid(row=0, column=1, sticky="EW", padx=(5, 0))
         self.text_combo = PathnameCombobox(
-            fn_frame, PrefKey.PPCOMP_TEXT_FILE_HISTORY, PrefKey.PPCOMP_TEXT_FILE
+            fn_frame, PrefKey.PPCOMP_FILE_HISTORY, PrefKey.PPCOMP_FILE_2
         )
         self.text_combo.grid(row=1, column=0, sticky="EW")
         ttk.Button(
             fn_frame,
-            text="Choose Text File",
-            command=lambda: self.choose_file(html=False),
+            text="Choose File 2",
+            command=lambda: self.choose_file(2),
         ).grid(row=1, column=1, sticky="EW", padx=(5, 0))
         ttk.Button(
             fn_frame,
@@ -131,7 +133,7 @@ class PPcompCheckerDialog(CheckerDialog):
 
         frame = ttk.Frame(self.custom_frame)
         frame.grid(row=1, column=0, sticky="NSEW")
-        frame.columnconfigure(2, weight=1)
+        frame.columnconfigure(3, weight=1)
 
         frame_g = ttk.LabelFrame(frame, text="General")
         frame_g.grid(row=0, column=0, sticky="NSEW")
@@ -160,15 +162,15 @@ class PPcompCheckerDialog(CheckerDialog):
             {
                 PrefKey.PPCOMP_SUPPRESS_FOOTNOTES: (
                     "Suppress Footnote Tags",
-                    'TXT: Suppress "[Footnote #:" marks',
+                    'Suppress "[Footnote #:" marks',
                 ),
                 PrefKey.PPCOMP_SUPPRESS_ILLOS: (
                     "Suppress Illo Tags",
-                    'TXT: Suppress "[Illustration:" marks',
+                    'Suppress "[Illustration:" marks',
                 ),
                 PrefKey.PPCOMP_SUPPRESS_SIDENOTES: (
                     "Suppress Sidenote Tags",
-                    'TXT: Suppress "[Sidenote:" marks',
+                    'Suppress "[Sidenote:" marks',
                 ),
             }.items()
         ):
@@ -184,23 +186,23 @@ class PPcompCheckerDialog(CheckerDialog):
             {
                 PrefKey.PPCOMP_CSS_ADD_ILLOS: (
                     "Add Illo Tags",
-                    "HTML: Add [Illustration ] tag",
+                    "Add [Illustration ] tag",
                 ),
                 PrefKey.PPCOMP_CSS_ADD_SIDENOTES: (
                     "Add Sidenote Tags",
-                    "HTML: Add [Sidenote: ...]",
+                    "Add [Sidenote: ...]",
                 ),
                 PrefKey.PPCOMP_SUPPRESS_NBSP: (
                     "Suppress &nbsp; In Nos.",
-                    "HTML: Suppress non-breakable spaces between numbers",
+                    "Suppress non-breakable spaces between numbers",
                 ),
                 PrefKey.PPCOMP_SUPPRESS_WJ: (
                     "Suppress Word Joiner",
-                    "HTML: Suppress Word join (&NoBreak;/&#x2060;)",
+                    "Suppress Word join (&NoBreak;/&#x2060;)",
                 ),
                 PrefKey.PPCOMP_CSS_SMCAP: (
                     "Smallcap ⇒ UPPERCASE",
-                    "HTML: Transform small caps into uppercase",
+                    "Transform small caps into uppercase",
                 ),
             }.items()
         ):
@@ -211,8 +213,37 @@ class PPcompCheckerDialog(CheckerDialog):
             btn.grid(row=cnt, column=0, sticky="NSW")
             ToolTip(btn, tooltip)
 
+        frame_r = ttk.LabelFrame(frame, text="From Rounds")
+        frame_r.grid(row=0, column=2, sticky="NSEW", rowspan=2, padx=5)
+        for cnt, (prefkey, (label, tooltip)) in enumerate(
+            {
+                PrefKey.PPCOMP_ROUNDS_PAGE_BLOCK: (
+                    "Remove Page Seps, /*, etc",
+                    "Remove page separators and block markup",
+                ),
+                PrefKey.PPCOMP_ROUNDS_PROOFERS: (
+                    "Remove [**...]",
+                    "Remove [**proofreaders notes]",
+                ),
+                PrefKey.PPCOMP_ROUNDS_REGROUP: (
+                    "Rejoin wo-* *rds",
+                    "Rejoin 'wo-* *rds' split across page boundary",
+                ),
+                PrefKey.PPCOMP_ROUNDS_FORMAT: (
+                    "Ignore Inline Formatting",
+                    "Silence formatting differences due to italic/bold/etc markup",
+                ),
+            }.items()
+        ):
+            frame_r.rowconfigure(cnt, weight=1)
+            btn = ttk.Checkbutton(
+                frame_r, variable=PersistentBoolean(prefkey), text=label
+            )
+            btn.grid(row=cnt, column=0, sticky="NSW")
+            ToolTip(btn, tooltip)
+
         frame_c = ttk.LabelFrame(frame, text="CSS")
-        frame_c.grid(row=0, column=2, sticky="NSEW", rowspan=2)
+        frame_c.grid(row=0, column=3, sticky="NSEW", rowspan=2)
         for cnt, (prefkey, (label, tooltip)) in enumerate(
             {
                 PrefKey.PPCOMP_CSS_NO_DEFAULT: (
@@ -271,31 +302,28 @@ class PPcompCheckerDialog(CheckerDialog):
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
 
-    def choose_file(self, html: bool) -> None:
-        """Choose an HTML or text file."""
-        if html:
-            filename = FileDialog.askopenfilename(
-                filetypes=(
-                    ("HTML files", "*.html *.htm *.xhtml"),
-                    ("All files", "*.*"),
-                )
+    def choose_file(self, one_or_two: int) -> None:
+        """Choose an file.
+
+        Args:
+            one_or_two: Whether choosing first or second file
+        """
+        assert one_or_two in (1, 2)
+        filename = FileDialog.askopenfilename(
+            filetypes=(
+                ("Text/HTML files", "*.txt *.html *.htm *.xhtml"),
+                ("All files", "*.*"),
             )
-        else:
-            filename = FileDialog.askopenfilename(
-                filetypes=(
-                    ("Text files", "*.txt"),
-                    ("All files", "*.*"),
-                )
-            )
+        )
         if filename:
             if is_windows():
                 filename = filename.replace("\\", "/")
             self.focus()
-            if html:
-                preferences.set(PrefKey.PPCOMP_HTML_FILE, filename)
+            if one_or_two == 1:
+                preferences.set(PrefKey.PPCOMP_FILE_1, filename)
                 self.html_combo.add_to_history(filename)
             else:
-                preferences.set(PrefKey.PPCOMP_TEXT_FILE, filename)
+                preferences.set(PrefKey.PPCOMP_FILE_2, filename)
                 self.text_combo.add_to_history(filename)
 
     def display_entries(
@@ -305,8 +333,8 @@ class PPcompCheckerDialog(CheckerDialog):
         super().display_entries(auto_select_line, complete_msg)
 
         for left, right, tag in [
-            (FLAG_CH_HTML_L, FLAG_CH_HTML_R, HighlightTag.PPCOMP_HTML),
-            (FLAG_CH_TEXT_L, FLAG_CH_TEXT_R, HighlightTag.PPCOMP_TEXT),
+            (FLAG_CH_1_L, FLAG_CH_1_R, HighlightTag.PPCOMP_COL_1),
+            (FLAG_CH_2_L, FLAG_CH_2_R, HighlightTag.PPCOMP_COL_2),
         ]:
             start = "1.0"
             while True:
@@ -328,14 +356,12 @@ class PPcompCheckerDialog(CheckerDialog):
         # Save entries, because loading file will clear this dialog & hence the entries
         save_entries = copy.deepcopy(self.entries)
         save_sel_idx = self.current_entry_index()
-        # Check if currently HTML loaded
-        html_loaded = os.path.splitext(the_file().filename)[1].lower() in (
-            ".htm",
-            ".html",
-            ".xhtml",
+        # Get opposite filename to currently loaded one
+        f1_loaded = os.path.samefile(
+            the_file().filename, preferences.get(PrefKey.PPCOMP_FILE_1)
         )
         new_file = preferences.get(
-            PrefKey.PPCOMP_TEXT_FILE if html_loaded else PrefKey.PPCOMP_HTML_FILE
+            PrefKey.PPCOMP_FILE_2 if f1_loaded else PrefKey.PPCOMP_FILE_1
         )
         if not (new_file and os.path.isfile(new_file)):
             logger.error(f"File {new_file} does not exist")
@@ -398,98 +424,90 @@ class PPcompChecker:
 
         empty_args: list[str] = []
         PPcompChecker.files = []
-        PPcompChecker.files.append(PgdpFileHtml(empty_args))
-        PPcompChecker.files.append(PgdpFileText(empty_args))
-        fname_h = preferences.get(PrefKey.PPCOMP_HTML_FILE)
-        fname_t = preferences.get(PrefKey.PPCOMP_TEXT_FILE)
-        if not (fname_h and fname_t):
+        cur_fname = the_file().filename
+        fnames: list[str] = [
+            preferences.get(PrefKey.PPCOMP_FILE_1),
+            preferences.get(PrefKey.PPCOMP_FILE_2),
+        ]
+        if not (fnames[0] and fnames[1]):
             lift_and_unbusy()
             return
-        if not os.path.isfile(fname_h):
-            logger.error(f"File {fname_h} does not exist")
-            lift_and_unbusy()
-            return
-        if not os.path.isfile(fname_t):
-            logger.error(f"File {fname_t} does not exist")
-            lift_and_unbusy()
-            return
-        # If either of the files is being edited & is modified, allow user to save first
-        fname = the_file().filename
-        if maintext().is_modified() and (
-            os.path.samefile(fname, fname_h) or os.path.samefile(fname, fname_t)
-        ):
-            save = messagebox.askyesnocancel(
-                title="Save document?",
-                message="Save changes to document first?",
-                detail="Comparison will not include any unsaved changes.",
-                icon=messagebox.WARNING,
-            )
-            # If Cancel from messagebox, return & do nothing
-            # If No from messagebox, continue to run tool without saving file
-            # If Yes from messagebox, save file before running tool
-            # if Cancel from save-as dialog (probably can't happen since we have a filename), return & do nothing
-            if save is None or save and not the_file().save_file():
-                self.dialog.lift()
+        for fname in fnames:
+            if not os.path.isfile(fname):
+                logger.error(f"File {fname} does not exist")
                 lift_and_unbusy()
                 return
-
-        try:
-            PPcompChecker.files[0].load(fname_h)
-        except HTMLSyntaxError as exc:
-            # Output parsing errors to dialog rather than logging an error
-            self.dialog.reset()
-            self.dialog.add_header(str(exc))
-            # Tailor header message to whether text or HTML file is loaded
-            if os.path.splitext(the_file().filename)[1].lower() in (
-                ".htm",
-                ".html",
-                ".xhtml",
-            ):
-                self.dialog.add_header(
-                    "Fix the errors below before re-running ppcomp", ""
+            # If either of the files is being edited & is modified, allow user to save first
+            if maintext().is_modified() and os.path.samefile(cur_fname, fname):
+                save = messagebox.askyesnocancel(
+                    title="Save document?",
+                    message="Save changes to document first?",
+                    detail="Comparison will not include any unsaved changes.",
+                    icon=messagebox.WARNING,
                 )
+                # If Cancel from messagebox, return & do nothing
+                # If No from messagebox, continue to run tool without saving file
+                # If Yes from messagebox, save file before running tool
+                # if Cancel from save-as dialog (probably can't happen since we have a filename), return & do nothing
+                if save is None or save and not the_file().save_file():
+                    self.dialog.lift()
+                    lift_and_unbusy()
+                    return
+            if os.path.splitext(fname)[1].lower() in (".htm", ".html", ".xhtml"):
+                PPcompChecker.files.append(PgdpFileHtml(empty_args))
             else:
+                PPcompChecker.files.append(PgdpFileText(empty_args))
+
+        for idx, fname in enumerate(fnames):
+            try:
+                PPcompChecker.files[idx].load(fname)
+            except HTMLSyntaxError as exc:
+                # Output parsing errors to dialog rather than logging an error
+                self.dialog.reset()
+                self.dialog.add_header(str(exc))
                 self.dialog.add_header(
-                    'First, use "Switch File" to load HTML file.',
-                    "Then fix the errors below before re-running ppcomp",
-                    "",
+                    "Fix the errors below in the HTML file before re-running ppcomp", ""
                 )
-            # Extract line & column, message and optional supplementary data (dict)
-            # Display in dialog
-            for (line, col), msg, data in exc.parse_errors:
-                if data and isinstance(data, dict):
-                    extra = " (" + ", ".join(f"{k}={v}" for k, v in data.items()) + ")"
-                else:
-                    extra = ""
-                self.dialog.add_entry(
-                    f"{msg}{extra}",
-                    IndexRange(
-                        IndexRowCol(line, max(col - 1, 0)), IndexRowCol(line, col)
-                    ),
-                )
-            self.dialog.display_entries()
-            return
-        except (FileNotFoundError, SyntaxError) as exc:
-            logger.error(exc)
-            lift_and_unbusy()
-            return
-        try:
-            PPcompChecker.files[1].load(fname_t)
-        except (FileNotFoundError, SyntaxError) as exc:
-            logger.error(exc)
-            lift_and_unbusy()
-            return
+                # Extract line & column, message and optional supplementary data (dict)
+                # Display in dialog
+                for (line, col), msg, data in exc.parse_errors:
+                    if data and isinstance(data, dict):
+                        extra = (
+                            " (" + ", ".join(f"{k}={v}" for k, v in data.items()) + ")"
+                        )
+                    else:
+                        extra = ""
+                    self.dialog.add_entry(
+                        f"{msg}{extra}",
+                        IndexRange(
+                            IndexRowCol(line, max(col - 1, 0)), IndexRowCol(line, col)
+                        ),
+                    )
+                self.dialog.display_entries()
+                return
+            except (FileNotFoundError, SyntaxError) as exc:
+                logger.error(exc)
+                lift_and_unbusy()
+                return
         for f in PPcompChecker.files:
             f.cleanup()
             # perform common cleanup for both files
             PPComp.check_characters(PPcompChecker.files)
 
         self.dialog.reset()
+        self.dialog.add_header(
+            f"Deleted words in first file but not in second will appear {FLAG_CH_1_L}like this{FLAG_CH_1_R}"
+        )
+        self.dialog.add_header(
+            f"Inserted words in second file but not in first will appear {FLAG_CH_2_L}like this{FLAG_CH_2_R}",
+            "",
+        )
         render_marked_diff(
             self.dialog,
             PPcompChecker.files[0].text,
             PPcompChecker.files[1].text,
             PPcompChecker.files[0].start_line,
+            PPcompChecker.files[1].start_line,
         )
         if preferences.get(PrefKey.PPCOMP_EXTRACT_FOOTNOTES):
             self.dialog.add_header("", "==== FOOTNOTES ====", "")
@@ -497,6 +515,7 @@ class PPcompChecker:
                 self.dialog,
                 PPcompChecker.files[0].footnotes,
                 PPcompChecker.files[1].footnotes,
+                0,
                 0,
             )
 
@@ -621,7 +640,11 @@ def join_tokens(tokens: list[str]) -> str:
 
 
 def render_marked_diff(
-    dialog: PPcompCheckerDialog, a_text: str, b_text: str, html_file_start: int
+    dialog: PPcompCheckerDialog,
+    a_text: str,
+    b_text: str,
+    a_file_start: int,
+    b_file_start: int,
 ) -> None:
     """Render the diffs to the dialog."""
     rows = aligned_words_with_lines(a_text, b_text)
@@ -636,26 +659,24 @@ def render_marked_diff(
     cur_linenum: tuple[int, int] | None = None
 
     def flush_changes():
-        if new_buf:
-            cur_line.append(f"{FLAG_CH_TEXT_L}{join_tokens(new_buf)}{FLAG_CH_TEXT_R}")
         if old_buf:
-            cur_line.append(f"{FLAG_CH_HTML_L}{join_tokens(old_buf)}{FLAG_CH_HTML_R}")
-        old_buf.clear()
-        new_buf.clear()
+            cur_line.append(f"{FLAG_CH_1_L}{join_tokens(old_buf)}{FLAG_CH_1_R}")
+            old_buf.clear()
+        if new_buf:
+            cur_line.append(f"{FLAG_CH_2_L}{join_tokens(new_buf)}{FLAG_CH_2_R}")
+            new_buf.clear()
 
-    html_ln = os.path.splitext(the_file().filename)[1].lower() in (
-        ".htm",
-        ".html",
-        ".xhtml",
+    f1_loaded = os.path.samefile(
+        the_file().filename, preferences.get(PrefKey.PPCOMP_FILE_1)
     )
     line_has_change = False
-    a_line = html_file_start + 1
-    b_line = 1
+    a_line = a_file_start + 1
+    b_line = b_file_start + 1
     for r in rows:
         if r["a_line"] is not None:
-            a_line = r["a_line"] + html_file_start
+            a_line = r["a_line"] + a_file_start
         if r["b_line"] is not None:
-            b_line = r["b_line"]
+            b_line = r["b_line"] + b_file_start
 
         # New source line → flush current output line
         if (a_line, b_line) != (last_a, last_b):
@@ -693,7 +714,7 @@ def render_marked_diff(
             continue
 
         a_line, b_line = line_pair
-        if html_ln:
+        if f1_loaded:
             if a_line is not None:
                 index = IndexRange(IndexRowCol(a_line, 0), IndexRowCol(a_line, 0))
             else:
@@ -761,19 +782,15 @@ def refine_punctuation_diffs(line: str) -> str:
         if not prefix and not suffix:
             return match.group(0)
 
-        # If split between two parts is mid-word, e.g. "C⦕opyright⦖⦓OPYRIGHT⦔", leave unchanged
-        if re.search(r"\p{Letter}$", a_mid) and re.search(r"^\p{Letter}", b_mid):
-            return match.group(0)
-
         parts = []
         # Prefix stays unmarked
         parts.append(prefix)
 
         # Middle difference
         if a_mid:
-            parts.append(f"⦕{a_mid}⦖")
+            parts.append(f"{FLAG_CH_1_L}{a_mid}{FLAG_CH_1_R}")
         if b_mid:
-            parts.append(f"⦓{b_mid}⦔")
+            parts.append(f"{FLAG_CH_2_L}{b_mid}{FLAG_CH_2_R}")
 
         # Suffix stays unmarked
         parts.append(suffix)
@@ -974,9 +991,8 @@ class PgdpFile:
         self.args = args
         self.basename = ""
         self.text = ""  # file text
-        self.start_line = (
-            0  # line text started, before stripping boilerplate and/or head
-        )
+        # line text started, before stripping boilerplate and/or head
+        self.start_line = 0
         self.footnotes = ""  # footnotes text, if extracted
 
     def load(self, filename):
@@ -1058,25 +1074,25 @@ class PgdpFileText(PgdpFile):
 
     def remove_formatting(self):
         """Ignore or replace italics and bold tags in file from rounds"""
-        if self.args.ignore_format:
+        if preferences.get(PrefKey.PPCOMP_ROUNDS_FORMAT):
             for tag in ["<i>", "</i>", "<b>", "</b>"]:
                 self.text = self.text.replace(tag, "")
         else:
             for tag in ["<i>", "</i>"]:
                 self.text = self.text.replace(tag, "_")
             for tag in ["<b>", "</b>"]:
-                self.text = self.text.replace(tag, self.args.css_bold)
+                self.text = self.text.replace(tag, "=")
         # remove other markup
         self.text = re.sub("<.*?>", "", self.text)
 
     def suppress_proofers_notes(self):
         """suppress proofers notes in file from rounds"""
-        if self.args.suppress_proofers_notes:
+        if preferences.get(PrefKey.PPCOMP_ROUNDS_PROOFERS):
             self.text = re.sub(r"\[\*\*[^]]*?]", "", self.text)
 
     def regroup_split_words(self):
         """Regroup split words, must run remove page markers 1st"""
-        if self.args.regroup_split_words:
+        if preferences.get(PrefKey.PPCOMP_ROUNDS_REGROUP):
             word_splits = {
                 r"(\w+)-\*(\n+)\*": r"\n\1",  # followed by 0 or more blank lines
                 r"(\w+)-\*(\w+)": r"\1\2",
@@ -1086,9 +1102,9 @@ class PgdpFileText(PgdpFile):
 
     def ignore_format(self):
         """Remove italics and bold markers in proofed file"""
-        # if self.args.ignore_format:
-        #     self.text = re.sub(r"_((.|\n)+?)_", r"\1", self.text)
-        #     self.text = re.sub(r"=((.|\n)+?)=", r"\1", self.text)
+        if preferences.get(PrefKey.PPCOMP_ROUNDS_FORMAT):
+            self.text = re.sub(r"_((.|\n)+?)_", r"\1", self.text)
+            self.text = re.sub(r"=((.|\n)+?)=", r"\1", self.text)
 
     def remove_thought_breaks(self):
         """Remove thought breaks (4 or more spaced asterisks or dots)"""
@@ -1156,10 +1172,19 @@ class PgdpFileText(PgdpFile):
             self.remove_formatting()
             self.suppress_proofers_notes()
             self.regroup_split_words()
-        else:  # processed text file
+        else:  # processed text file in original code, but all text files in this version
             self.strip_pg_boilerplate()
             self.ignore_format()
             self.remove_thought_breaks()
+            if preferences.get(PrefKey.PPCOMP_ROUNDS_PAGE_BLOCK):
+                self.remove_paging()  # remove page markers & blank pages
+                self.remove_block_markup()
+            if preferences.get(PrefKey.PPCOMP_ROUNDS_FORMAT):
+                self.remove_formatting()
+            if preferences.get(PrefKey.PPCOMP_ROUNDS_PROOFERS):
+                self.suppress_proofers_notes()
+            if preferences.get(PrefKey.PPCOMP_ROUNDS_REGROUP):
+                self.regroup_split_words()
 
         # all text files
         if preferences.get(PrefKey.PPCOMP_EXTRACT_FOOTNOTES):
